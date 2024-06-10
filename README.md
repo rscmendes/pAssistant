@@ -10,6 +10,7 @@ Text to speech models tried:
 TODO:
 - [x] Microphone should be active only while talking, instead of using a fixed duration.
 - [ ] Pass audio data directly to model, instead of file. For some reason this was crashing the model.
-- [ ] Use a quantized version of Phi-3? The problem is that the text2speech model is already using all GPU. But I can maybe move from GPU to CPU while idle and vice-versa when using it.
+- [x] Use a quantized version of Phi-3? The problem is that the text2speech model is already using all GPU. But I can maybe move from GPU to CPU while idle and vice-versa when using it.
+- [ ] Quantize whisper
 - [ ] Audio cuts for big answers.
 
