@@ -4,7 +4,9 @@ from pydub import AudioSegment
 import torch
 # from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 from transformers import WhisperProcessor, WhisperForConditionalGeneration, \
-    BitsAndBytesConfig, AutoModel, AutoProcessor
+    BitsAndBytesConfig, AutoModel, AutoProcessor, SpeechT5Processor, \
+    SpeechT5ForTextToSpeech, SpeechT5HifiGan
+from datasets import load_dataset
 
 
 _framerate = 16000
@@ -16,10 +18,13 @@ _stt_processor = None
 _stt_device = None  # we use device_map auto to better use the resources
 
 
-_default_tts_model = "suno/bark"
+_default_tts_model = "microsoft/speecht5_tts"
+_default_tts_vocoder = "microsoft/speecht5_hifigan"
 _tts_model = None
 _tts_processor = None
-_tts_device = None  # we use device_map auto to better use the resources
+_tts_vocoder = None
+__speaker_embeddings = None
+_tts_device = None
 
 
 def _load_audio(file_path):
@@ -77,26 +82,32 @@ def speech2text(audio_file: Path, model_name=_default_stt_model):
 
 
 def text2speech(text):
-    global _tts_model, _tts_processor, _tts_device
+    global _tts_model, _tts_processor, _tts_vocoder, _tts_device, _speaker_embeddings
     if _tts_model is None:
         # The BarkModel does not allow quantization nor device_map
         _tts_device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
-        _tts_model = AutoModel.from_pretrained(_default_tts_model)
+        _tts_model = SpeechT5ForTextToSpeech.from_pretrained(
+            "microsoft/speecht5_tts")
         _tts_model.to(_tts_device)
 
+    if _tts_vocoder is None:
+        _tts_vocoder = SpeechT5HifiGan.from_pretrained(
+            "microsoft/speecht5_hifigan")
+        _tts_vocoder.to(_tts_device)
+
+        # TODO replace with simpler approach
+        embeddings_dataset = load_dataset(
+            "Matthijs/cmu-arctic-xvectors", split="validation")
+        _speaker_embeddings = torch.tensor(
+            embeddings_dataset[7306]["xvector"]).unsqueeze(0).to('cuda:0')
+
     if _tts_processor is None:
-        _tts_processor = AutoProcessor.from_pretrained(_default_tts_model)
+        _tts_processor = SpeechT5Processor.from_pretrained(
+            "microsoft/speecht5_tts")
 
-    inputs = _tts_processor(text, return_tensors="pt")
+    inputs = _tts_processor(text=text, return_tensors="pt").to(_tts_device)
+    speech = _tts_model.generate_speech(
+        inputs["input_ids"], _speaker_embeddings, vocoder=_tts_vocoder)
 
-    # the attention mask was resulting in very strange behavior
-    # inputs['attention_mask'] = torch.ones(
-    #     inputs.input_ids.shape, dtype=torch.long).to(_device)
-    inputs = {key: val.to(_tts_device) for key, val in inputs.items()}
-    inputs['pad_token_id'] = _tts_processor.tokenizer.pad_token_id
-
-    speech_values = _tts_model.generate(
-        **inputs, do_sample=True).cpu().numpy().squeeze()
-    sampling_rate = _tts_model.generation_config.sample_rate
-    return (speech_values * 32767).astype(np.int16), sampling_rate
+    return speech.cpu().numpy(), 16000

@@ -12,7 +12,11 @@ TODO:
 - [ ] Pass audio data directly to model, instead of file. For some reason this was crashing the model.
 - [x] Use a quantized version of Phi-3? The problem is that the text2speech model is already using all GPU. But I can maybe move from GPU to CPU while idle and vice-versa when using it.
 - [x] Quantize whisper
-- [ ] Bark does not allow for quantization, and takes about 5GB in GPU. Replace with other model 
-- [ ] Audio cuts for big answers.
+- [x] Bark does not allow for quantization, and takes about 5GB in GPU. Replace with other model. 
+    - Replaced with SpeechT5. Also doesn't allow quantization, but is significantly smaller. It also allows for the Vocoder integration.
+- [x] Audio cuts for big answers.
+    - Fixed with SpeechT5
+- [ ] Improve the vocoder to allow selecting the speaker
+- [ ] Initialize the models at startup, instead of lazy loading
 - [ ] Clean code
 
