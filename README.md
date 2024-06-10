@@ -17,6 +17,7 @@ TODO:
 - [x] Audio cuts for big answers.
     - Fixed with SpeechT5
 - [ ] Improve the vocoder to allow selecting the speaker
+- [ ] Add the history to the model, to allow continuous chat.
 - [ ] Initialize the models at startup, instead of lazy loading
 - [ ] Clean code
 
