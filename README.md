@@ -8,7 +8,8 @@ Text to speech models tried:
 * suno/bark: uses almost all my GPU resources. Works most of the times, but sometimes it gives random output.
 
 TODO:
-- [ ] Microphone should be active only while talking, instead of using a fixed duration.
+- [x] Microphone should be active only while talking, instead of using a fixed duration.
 - [ ] Pass audio data directly to model, instead of file. For some reason this was crashing the model.
 - [ ] Use a quantized version of Phi-3? The problem is that the text2speech model is already using all GPU. But I can maybe move from GPU to CPU while idle and vice-versa when using it.
+- [ ] Audio cuts for big answers.
 

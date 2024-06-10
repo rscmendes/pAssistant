@@ -11,32 +11,122 @@ logger = logging.getLogger(__name__)
 _audio_dtype = np.float32
 
 
-def record_audio(duration=5, samplerate=16000, file_output=Path('my_audio.wav')):
-    try:
-        logger.info("Recording...")
+class AudioRecorder:
+    def __init__(self, samplerate, blocksize, threshold, silence_duration):
+        self.samplerate = samplerate
+        self.blocksize = blocksize
+        self.threshold = threshold
+        self.silence_duration = silence_duration
+        self.audio_buffer = []
+        self.silence_blocks = 0
+        self.required_silence_blocks = int(
+            silence_duration * samplerate / blocksize)
+        self.continue_recording = True
 
-        # Allocate space for the recording
-        myrecording = np.zeros(
-            (int(duration * samplerate), 1), dtype=_audio_dtype)
+    def is_voice(self, block):
+        return np.any(np.abs(block) > self.threshold)
 
-        # Start recording
-        sd.rec(out=myrecording, samplerate=samplerate,
-               channels=1, dtype=_audio_dtype)
+    def callback(self, indata, frames, time, status):
+        if status:
+            print(status)
+        if self.is_voice(indata):
+            self.silence_blocks = 0
+            # Use only the first channel
+            self.audio_buffer.extend(indata[:, 0])
+        else:
+            self.silence_blocks += 1
+            if self.silence_blocks >= self.required_silence_blocks:
+                self.continue_recording = False
 
-        # Wait until the recording is finished
-        sd.wait()
+    def record_until_silence(self):
+        self.audio_buffer = []
+        self.silence_blocks = 0
+        self.continue_recording = True
 
-        logger.info("Recording complete.")
+        with sd.InputStream(callback=self.callback, channels=1, samplerate=self.samplerate, blocksize=self.blocksize, dtype='float32'):
+            while self.continue_recording:
+                sd.sleep(100)
 
-        # Write the audio file
-        sf.write(file_output, myrecording, samplerate)
-        logger.info(f"Audio saved to {file_output}")
-        return file_output
-        # return myrecording, samplerate
+        return np.array(self.audio_buffer, dtype='float32')
 
-    except Exception as e:
-        logger.error(f"An error occurred during recording: {e}")
-        return None, None
+
+def record_audio(file_output=Path('my_audio.wav'), samplerate=16000, blocksize=1024, threshold=0.25, silence_duration=1.0):
+    recorder = AudioRecorder(samplerate, blocksize,
+                             threshold, silence_duration)
+    logger.info("Recording...")
+    recorded_audio = recorder.record_until_silence()
+    logger.info("Recording complete.")
+
+    # TODO: send the audio data directly instead of writing the file
+    sf.write(file_output, recorded_audio, samplerate)
+    logger.info(f"Audio saved to {file_output}.")
+    return file_output
+
+    # def record_audio(duration=5, samplerate=16000, file_output=Path('my_audio.wav')):
+    #     try:
+    #         logger.info("Recording...")
+
+    #         # Allocate space for the recording
+    #         myrecording = np.zeros(
+    #             (int(duration * samplerate), 1), dtype=_audio_dtype)
+
+    #         # Start recording
+    #         sd.rec(out=myrecording, samplerate=samplerate,
+    #                channels=1, dtype=_audio_dtype)
+
+    #         # Wait until the recording is finished
+    #         sd.wait()
+
+    #         logger.info("Recording complete.")
+
+    #         # Write the audio file
+    #         sf.write(file_output, myrecording, samplerate)
+    #         logger.info(f"Audio saved to {file_output}")
+    #         return file_output
+    #         # return myrecording, samplerate
+
+    #     except Exception as e:
+    #         logger.error(f"An error occurred during recording: {e}")
+    #         return None, None
+
+    # def record_audio_until_silence(samplerate=16000, file_output=Path('my_audio.wav')):
+    #     # Function to check if a block of audio contains voice
+    #     def is_voice(block, threshold):
+    #         print(np.any(np.abs(block) > threshold))
+    #         return np.any(np.abs(block) > threshold)
+
+    #     blocksize = 1024    # Block size in samples
+    #     threshold = 0.25    # Silence threshold
+    #     silence_duration = 1.0  # Duration of silence in seconds to stop recording
+
+    #     silence_blocks = 0
+    #     required_silence_blocks = int(silence_duration * samplerate / blocksize)
+    #     continue_recording = True
+
+    #     audio_buffer = []
+
+    #     def callback(indata, frames, time, status):
+    #         nonlocal silence_blocks, continue_recording
+    #         if status:
+    #             print(status)
+    #         if is_voice(indata, threshold):
+    #             silence_blocks = 0
+    #             audio_buffer.extend(indata)
+    #         else:
+    #             silence_blocks += 1
+    #             if silence_blocks >= required_silence_blocks:
+    #                 continue_recording = False
+
+    #     stream = sd.InputStream(callback=callback, channels=1,
+    #                             samplerate=samplerate, blocksize=blocksize, dtype=_audio_dtype)
+    #     with stream:
+    #         while continue_recording:
+    #             sd.sleep(100)
+
+    #     # return np.concatenate(audio_buffer, axis=0), samplerate
+    #     sf.write(file_output, np.concatenate(audio_buffer, axis=0), samplerate)
+    #     logger.info(f"Audio saved to {file_output}")
+    #     return file_output
 
 
 def play_audio_file(filename):
@@ -49,14 +139,6 @@ def play_audio_file(filename):
 
 
 def play_audio(audio_data, sampling_rate):
-    # audio_segment = AudioSegment(
-    #     audio_data.tobytes(),
-    #     frame_rate=sampling_rate,
-    #     sample_width=audio_data.dtype.itemsize,
-    #     channels=1
-    # )
-
-    # # Play the audio
-    # playback.play(audio_segment)
+    # Play the audio
     sd.play(audio_data, sampling_rate)
     sd.wait()

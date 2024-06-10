@@ -31,29 +31,28 @@ def main():
     logger = _set_logger()
     # args = _parse_args()
 
-    user_query = ""
     while True:
-        # audio_file = 'prompt.wav'
         # TODO pass the data directly instead of file
+        # audio_file = 'prompt.wav'  # for testing
         audio_file = record_audio()
-        # user_speech, sample_rate = record_audio()
-        # play_audio(user_speech, sample_rate)
+        play_audio_file(audio_file)
 
         user_query = speech2text(audio_file)
         print(f"User: {user_query}")
 
-        audio_file.unlink()
+        # audio_file.unlink()
 
-        if user_query.lower().startswith("stop") or "bye bye" in user_query.lower():  # TODO make smarter finish
+        if user_query.lower().startswith("stop") or "bye bye" in user_query.lower():
             break
 
-        # user_query = "What is 1 + 2?"
+        # user_query = "What is 1 + 2?"  # for testing
         assistant_response = get_response(user_query)
         print(f"Assistant: {assistant_response}")
-        # assistant_response = "Berlin is great, thank you"
 
+        # assistant_response = "The capital of Germany is Berlin"  # testing
         assistant_audio, sampling_rate = text2speech(assistant_response)
         play_audio(assistant_audio, sampling_rate)
+        break
 
 
 if __name__ == "__main__":
