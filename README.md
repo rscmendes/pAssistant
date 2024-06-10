@@ -11,6 +11,8 @@ TODO:
 - [x] Microphone should be active only while talking, instead of using a fixed duration.
 - [ ] Pass audio data directly to model, instead of file. For some reason this was crashing the model.
 - [x] Use a quantized version of Phi-3? The problem is that the text2speech model is already using all GPU. But I can maybe move from GPU to CPU while idle and vice-versa when using it.
-- [ ] Quantize whisper
+- [x] Quantize whisper
+- [ ] Bark does not allow for quantization, and takes about 5GB in GPU. Replace with other model 
 - [ ] Audio cuts for big answers.
+- [ ] Clean code
 

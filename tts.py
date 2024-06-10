@@ -4,20 +4,22 @@ from pydub import AudioSegment
 import torch
 # from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 from transformers import WhisperProcessor, WhisperForConditionalGeneration, \
-    BarkModel, BarkProcessor
+    BitsAndBytesConfig, AutoModel, AutoProcessor
 
 
 _framerate = 16000
-_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 _default_stt_model = "openai/whisper-base"
 _stt_model = None
 _stt_processor = None
+_stt_device = None  # we use device_map auto to better use the resources
 
 
 _default_tts_model = "suno/bark"
 _tts_model = None
 _tts_processor = None
+_tts_device = None  # we use device_map auto to better use the resources
 
 
 def _load_audio(file_path):
@@ -31,11 +33,22 @@ def _load_audio(file_path):
 
 def speech2text(audio_file: Path, model_name=_default_stt_model):
     # lazy loading
-    global _stt_model, _stt_processor
+    global _stt_model, _stt_processor, _stt_device
     if _stt_model is None:
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=False,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+        )
+        # config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+
         _stt_model = WhisperForConditionalGeneration.from_pretrained(
-            model_name)
-        _stt_model.to(_device)
+            model_name,
+            quantization_config=quantization_config,
+            attn_implementation="flash_attention_2",
+            device_map='auto')
+        _stt_device = next(iter(_stt_model.hf_device_map.values()))
 
     if _stt_processor is None:
         _stt_processor = WhisperProcessor.from_pretrained(model_name)
@@ -45,7 +58,7 @@ def speech2text(audio_file: Path, model_name=_default_stt_model):
     # Preprocess the audio file
     input_features = _stt_processor(
         speech, sampling_rate=sample_rate, return_tensors="pt").input_features  # type: ignore
-    input_features = input_features.to(_device)
+    input_features = input_features.to(_stt_device, dtype=torch.float16)
 
     # Set to EN
     forced_decoder_ids = _stt_processor.get_decoder_prompt_ids(  # type: ignore
@@ -64,20 +77,23 @@ def speech2text(audio_file: Path, model_name=_default_stt_model):
 
 
 def text2speech(text):
-    global _tts_model, _tts_processor
+    global _tts_model, _tts_processor, _tts_device
     if _tts_model is None:
-        _tts_model = BarkModel.from_pretrained(_default_tts_model)
-        _tts_model.to(_device)
+        # The BarkModel does not allow quantization nor device_map
+        _tts_device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
+        _tts_model = AutoModel.from_pretrained(_default_tts_model)
+        _tts_model.to(_tts_device)
 
     if _tts_processor is None:
-        _tts_processor = BarkProcessor.from_pretrained(_default_tts_model)
+        _tts_processor = AutoProcessor.from_pretrained(_default_tts_model)
 
     inputs = _tts_processor(text, return_tensors="pt")
 
     # the attention mask was resulting in very strange behavior
     # inputs['attention_mask'] = torch.ones(
     #     inputs.input_ids.shape, dtype=torch.long).to(_device)
-    inputs = {key: val.to(_device) for key, val in inputs.items()}
+    inputs = {key: val.to(_tts_device) for key, val in inputs.items()}
     inputs['pad_token_id'] = _tts_processor.tokenizer.pad_token_id
 
     speech_values = _tts_model.generate(
