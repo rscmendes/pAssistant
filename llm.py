@@ -9,12 +9,11 @@ _tokenizer = None
 _device = None  # we use device_map auto to better the available resources
 
 
-def _pre_process_prompt(prompt):
-    # TODO add history
-    return f"<|user|>\n{prompt} <|end|>\n<|assistant|>"
+def _pre_process_prompt(prompt, history=''):
+    return f"{history}<|user|>\n{prompt}<|end|>\n<|assistant|>\n"
 
 
-def get_response(prompt, model_name=_default_llm):
+def get_response(prompt, history='', model_name=_default_llm):
     # lazy loading
     global _model, _tokenizer, _device
     if _model is None:
@@ -39,13 +38,19 @@ def get_response(prompt, model_name=_default_llm):
     if _tokenizer is None:
         _tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    inputs = _tokenizer(_pre_process_prompt(prompt),
+    processed_prompt = _pre_process_prompt(prompt, history)
+    inputs = _tokenizer(processed_prompt,
                         return_tensors="pt").to(_device)
-    outputs = _model.generate(inputs['input_ids'], max_length=100)
+    outputs = _model.generate(inputs['input_ids'], max_new_tokens=100)
     response = _tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     # Remove the prompt from the generated text
     input_length = len(_tokenizer.decode(
         inputs['input_ids'][0], skip_special_tokens=True))  # type: ignore
 
-    return response[input_length:].strip()
+    response = response[input_length:].strip()
+
+    # processed_prompt already has the history
+    history = f"{processed_prompt}{response}<|end|>\n"
+
+    return response, history
