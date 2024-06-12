@@ -1,7 +1,6 @@
 import argparse
 import logging
 import sys
-from dotenv import load_dotenv
 
 from audio_helper import record_audio, play_audio, play_audio_file
 from tts import speech2text, text2speech
@@ -40,6 +39,7 @@ def main():
     while True:
         # TODO pass the data directly instead of file
         # audio_file = 'prompt.wav'  # for testing
+        logger.info("Starting to record. Ask your question now.")
         audio_file = record_audio()
         # play_audio_file(audio_file)
 
