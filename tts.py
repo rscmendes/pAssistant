@@ -100,7 +100,7 @@ def text2speech(text):
         embeddings_dataset = load_dataset(
             "Matthijs/cmu-arctic-xvectors", split="validation")
         _speaker_embeddings = torch.tensor(
-            embeddings_dataset[7306]["xvector"]).unsqueeze(0).to('cuda:0')
+            embeddings_dataset[7306]["xvector"]).unsqueeze(0).to(_tts_device)
 
     if _tts_processor is None:
         _tts_processor = SpeechT5Processor.from_pretrained(
