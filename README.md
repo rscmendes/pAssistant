@@ -1,3 +1,16 @@
+# Personal assistant
+This is a personal assistant with a twist: a strong sarcastic personality. He might refuse to answer or provide witty and humorous responses.
+
+This is a pet project to exploit the great HuggingFace libraries and available open-source models. My objective was to run the personal assistant in the GPU and fully local, with I achieved with just 6 GB of GPU memory.
+
+Current model stack:
+- microsoft/Phi-3-mini-4k-instruct as LLM
+- openai/whisper-base as the speech-to-text model
+- microsoft/speecht5_tts as the text-to-speech model
+- "microsoft/speecht5_hifigan" as vocoder.
+Phi-3 and Whisper were quantized to 4 bits to fit my GPU.
+
+# WIP log
 Speech to text models tried:
 * Whisper: great quality but it is very slow. Unfortunately, it does not fit in my GPU, and quantization is only supported on CPU.
     * Changed to Whisper-base.
