@@ -3,7 +3,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, \
     AutoConfig, BitsAndBytesConfig
 
 
-_default_llm = "microsoft/Phi-3-mini-4k-instruct"
+_default_llm = "microsoft/Phi-3.5-mini-instruct"
 _model = None
 _tokenizer = None
 _device = None  # we use device_map auto to better the available resources
@@ -67,7 +67,7 @@ Tone:
 
 def _pre_process_prompt(prompt, history=''):
     if history == '':  # first prompt we add instructions
-        prompt = f"{_assistant_instructions}\n\n{prompt}"
+        prompt = f"<|system|>{_assistant_instructions}<|end|>\n{prompt}"
 
     return f"{history}<|user|>\n{prompt}<|end|>\n<|assistant|>\n"
 
