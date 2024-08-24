@@ -4,7 +4,7 @@ import sys
 
 from audio_helper import record_audio, play_audio, play_audio_file
 from tts import speech2text, text2speech
-from llm import get_response
+from llm import LLM
 
 
 def _set_logger():
@@ -35,6 +35,8 @@ def main():
     logger = _set_logger()
     # args = _parse_args()
 
+    llm = LLM()
+
     history = ''
     while True:
         # TODO pass the data directly instead of file
@@ -49,7 +51,7 @@ def main():
         audio_file.unlink()
 
         # user_query = "What is 1 + 2?"  # for testing
-        assistant_response, history = get_response(user_query, history)
+        assistant_response, history = llm.get_response(user_query, history)
 
         logger.info(f"Response: {assistant_response}")
 
