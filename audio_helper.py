@@ -3,12 +3,14 @@ import soundfile as sf
 from pathlib import Path
 import logging
 import numpy as np
-
+from pydub import AudioSegment
+import torch
 
 logger = logging.getLogger(__name__)
 
 
 _audio_dtype = np.float32
+_samplerate = 16000
 
 
 class AudioRecorder:
@@ -55,7 +57,7 @@ class AudioRecorder:
 
 
 def record_audio(file_output=Path('my_audio.wav'),
-                 samplerate=16000,
+                 samplerate=_samplerate,
                  blocksize=1024,
                  threshold=0.25,
                  silence_duration=1.0):
@@ -84,3 +86,12 @@ def play_audio(audio_data, sampling_rate):
     # Play the audio
     sd.play(audio_data, sampling_rate)
     sd.wait()
+
+
+def load_audio_file(file_path):
+    # Convert the audio file to the correct format using pydub
+    audio = AudioSegment.from_file(
+        file_path).set_channels(1).set_frame_rate(_samplerate)
+    # Normalize audio to [-1, 1]
+    samples = torch.tensor(audio.get_array_of_samples()).float() / 32768.0
+    return samples, _samplerate

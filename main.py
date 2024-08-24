@@ -2,8 +2,9 @@ import argparse
 import logging
 import sys
 
-from audio_helper import record_audio, play_audio, play_audio_file
-from tts import speech2text, text2speech
+from audio_helper import record_audio, play_audio
+from stt import Speech2Text
+from tts import Text2Speech
 from llm import LLM
 
 
@@ -26,6 +27,13 @@ def _parse_args():
     return parser.parse_args()
 
 
+def _init_models():
+    llm = LLM()
+    s2t = Speech2Text()
+    t2s = Text2Speech()
+    return llm, s2t, t2s
+
+
 def _should_stop(user_query):
     lower_query = user_query.lower()
     return (lower_query.startswith("stop") or "bye bye" in lower_query or "bye-bye" in lower_query)
@@ -35,7 +43,9 @@ def main():
     logger = _set_logger()
     # args = _parse_args()
 
-    llm = LLM()
+    logger.info("Initializing the models, wait patiently...")
+    llm, s2t, t2s = _init_models()
+    logger.info("Done.")
 
     history = ''
     while True:
@@ -45,7 +55,7 @@ def main():
         audio_file = record_audio()
         # play_audio_file(audio_file)
 
-        user_query = speech2text(audio_file)
+        user_query = s2t.speech2text(audio_file)
         logger.info(f"Query: {user_query}")
 
         audio_file.unlink()
@@ -58,7 +68,7 @@ def main():
         logger.debug(f"History: {history}")
 
         # assistant_response = "The capital of Germany is Berlin"  # testing
-        assistant_audio, sampling_rate = text2speech(assistant_response)
+        assistant_audio, sampling_rate = t2s.text2speech(assistant_response)
         play_audio(assistant_audio, sampling_rate)
 
         if _should_stop(user_query):
